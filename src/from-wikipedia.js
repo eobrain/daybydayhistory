@@ -1,21 +1,23 @@
 import { parse } from 'node-html-parser'
 import { pp } from 'passprint'
+import fs from 'fs'
+
 import TOML from '@iarna/toml'
 
 const cache = {}
-let hitCount = 0
-let missCount = 0
+// let hitCount = 0
+// let missCount = 0
 
-const hitRate = () => `${100 * hitCount / (hitCount + missCount)}%`
+// const hitRate = () => `${100 * hitCount / (hitCount + missCount)}%`
 
 // Returns {status, text}
 async function memoizeFetch (url) {
   let result = cache[url]
   if (result) {
-    ++hitCount
+    // ++hitCount
     return result
   }
-  ++missCount
+  // ++missCount
   const response = await fetch(url)
   if (response.status === 200) {
     result = { status: response.status, text: await response.text() }
@@ -179,7 +181,6 @@ async function fromYear (year, lang) {
   const thenDate = new Date()
   for (let dayOfYear = 1; dayOfYear <= 366; ++dayOfYear) {
     thenDate.setUTCFullYear(year, 0, dayOfYear)
-    const isoDate = thenDate.toLocaleDateString('fr-CA', { timeZone: 'UTC' })
     if (thenDate.getUTCFullYear() !== year) {
       console.log('must be leap year')
       break
@@ -188,11 +189,14 @@ async function fromYear (year, lang) {
     const { found, text, citation } = await thisDay(thenDate, lang, locale)
     if (found) {
       const dayData = { lang, text, citation }
+      const isoDate = thenDate.toLocaleDateString('fr-CA', { timeZone: 'UTC' }).toString()
       yearData[isoDate] = [dayData]
     }
   }
-  pp(hitRate())
-  pp(TOML.stringify(yearData))
+  const directory = pp(`data/${Math.trunc(year / 100)}`)
+  const path = pp(`${directory}/${year}.toml`)
+  await fs.promises.mkdir(directory, { recursive: true })
+  await fs.promises.writeFile(path, TOML.stringify(yearData))
 }
 
 if (process.argv.length <= 3) {

@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "node-html-parser": "^6.1.5",
     "passprint": "^0.0.1"
   }

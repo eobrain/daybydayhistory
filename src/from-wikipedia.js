@@ -1,5 +1,6 @@
 import { parse } from 'node-html-parser'
 import { pp } from 'passprint'
+import TOML from '@iarna/toml'
 
 const cache = {}
 let hitCount = 0
@@ -100,20 +101,20 @@ function trouverElementDansArticleDuMois ($monthRoot, monthUrl, monthString, day
 }
 
 export async function thisDay (thenDate, lang, locale) {
-  const year = pp(thenDate.getUTCFullYear())
-  const monthString = pp(thenDate.toLocaleDateString(locale, {
+  const year = thenDate.getUTCFullYear()
+  const monthString = thenDate.toLocaleDateString(locale, {
     month: 'long', timeZone: 'UTC'
-  }))
+  })
 
-  const day = pp(thenDate.getDate())
+  const day = thenDate.getDate()
 
-  const weekdayString = pp(thenDate.toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' }))
+  const weekdayString = thenDate.toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' })
 
   const monthUrl = ({
     en: `https://en.m.wikipedia.org/wiki/${monthString}_${year}`,
     fr: `https://fr.wikipedia.org/wiki/${monthString}_${year}`
   })[lang]
-  const { status: monthStatus, text: monthHtml } = await memoizeFetch(pp(monthUrl))
+  const { status: monthStatus, text: monthHtml } = await memoizeFetch(monthUrl)
   if (monthStatus !== 200) {
     console.log(`Got status ${monthStatus} from ${monthUrl}`)
   } else {
@@ -173,22 +174,25 @@ async function fromYear (year, lang) {
   const region = ({ en: 'US', fr: 'FR' })[lang]
   const locale = lang + '-' + region
 
+  const yearData = {}
+
   const thenDate = new Date()
   for (let dayOfYear = 1; dayOfYear <= 366; ++dayOfYear) {
     thenDate.setUTCFullYear(year, 0, dayOfYear)
-    pp(thenDate)
-    if (pp(thenDate.getUTCFullYear()) !== year) {
+    const isoDate = thenDate.toLocaleDateString('fr-CA', { timeZone: 'UTC' })
+    if (thenDate.getUTCFullYear() !== year) {
       console.log('must be leap year')
       break
     }
 
     const { found, text, citation } = await thisDay(thenDate, lang, locale)
     if (found) {
-      pp(hitRate())
       const dayData = { lang, text, citation }
-      pp(dayData)
+      yearData[isoDate] = [dayData]
     }
   }
+  pp(hitRate())
+  pp(TOML.stringify(yearData))
 }
 
 if (process.argv.length <= 3) {

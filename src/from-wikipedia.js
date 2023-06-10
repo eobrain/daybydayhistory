@@ -11,7 +11,7 @@ const cache = {}
 // const hitRate = () => `${100 * hitCount / (hitCount + missCount)}%`
 
 // Returns {status, text}
-async function memoizeFetch (url) {
+async function memoizeFetch(url) {
   let result = cache[url]
   if (result) {
     // ++hitCount
@@ -28,7 +28,7 @@ async function memoizeFetch (url) {
   return result
 }
 
-function filter (text) {
+function filter(text) {
   const lines = text.split('\n')
   const out = []
   let on = true
@@ -46,10 +46,10 @@ function filter (text) {
   return out.join('\n')
 }
 
-function pruneDom ($monthRoot) {
+function pruneDom($monthRoot) {
 }
 
-function taillerDom ($monthRoot) {
+function taillerDom($monthRoot) {
   const $span = $monthRoot.getElementById('Naissances')
   if (!$span) {
     return
@@ -58,7 +58,7 @@ function taillerDom ($monthRoot) {
   $ul.parentNode.removeChild($ul)
 }
 
-function annotateDeaths ($yearRoot) {
+function annotateDeaths($yearRoot) {
   const $span = $yearRoot.getElementById('Deaths')
   if (!$span) {
     return
@@ -69,10 +69,10 @@ function annotateDeaths ($yearRoot) {
   }
 }
 
-function findElementInMonthArticle ($monthRoot, monthUrl, monthString, day, year, weekdayString) {
+function findElementInMonthArticle($monthRoot, monthUrl, monthString, day, year, weekdayString) {
   const ids = [
-        `${monthString}_${day},_${year}_(${weekdayString})`,
-        `${weekdayString},_${monthString}_${day},_${year}`
+    `${monthString}_${day},_${year}_(${weekdayString})`,
+    `${weekdayString},_${monthString}_${day},_${year}`
   ]
   const citations = []
   for (const id of ids) {
@@ -87,22 +87,22 @@ function findElementInMonthArticle ($monthRoot, monthUrl, monthString, day, year
 
     return { found: true, $theElement, citation }
   }
-  console.log(`cannot find any of\n  ${citations.join('\n  ')}`)
+  // console.log(`cannot find any of\n  ${citations.join('\n  ')}`)
   return { found: false }
 }
 
-function trouverElementDansArticleDuMois ($monthRoot, monthUrl, monthString, day, year, weekdayString) {
+function trouverElementDansArticleDuMois($monthRoot, monthUrl, monthString, day, year, weekdayString) {
   const css = `li a[title="${day} ${monthString}"]`
   const $a = $monthRoot.querySelector(css)
   if (!$a) {
-    console.log(`${css} not found in ${monthUrl}`)
+    // console.log(`${css} not found in ${monthUrl}`)
     return { found: false }
   }
   const $theElement = $a.parentNode
   return { found: true, $theElement, citation: monthUrl }
 }
 
-export async function thisDay (thenDate, lang, locale) {
+export async function thisDay(thenDate, lang, locale) {
   const year = thenDate.getUTCFullYear()
   const monthString = thenDate.toLocaleDateString(locale, {
     month: 'long', timeZone: 'UTC'
@@ -135,7 +135,7 @@ export async function thisDay (thenDate, lang, locale) {
     const { found, $theElement, citation } = findElement($monthRoot, monthUrl, monthString, day, year, weekdayString)
     if (found) {
       const text = filter($theElement.innerText)
-      console.log(text)
+      // console.log(text)
       return { found, text, citation }
     }
   }
@@ -163,20 +163,29 @@ export async function thisDay (thenDate, lang, locale) {
       if ($li.innerText.match(pattern) && !$li.innerText.match(/ \([d†]\.? /)) {
         const found = true
         const text = $li.innerText.replace(pattern, '')
-        console.log(text)
+        // console.log(text)
         return { found, text, citation }
       }
     }
-    console.log(`cannot find ${pattern} in ${citation}`)
+    // console.log(`cannot find ${pattern} in ${citation}`)
   }
   return { found: false }
 }
 
-async function fromYear (year, lang) {
+async function fromYear(year, lang) {
   const region = ({ en: 'US', fr: 'FR' })[lang]
   const locale = lang + '-' + region
 
-  const yearData = {}
+  const directory = pp(`data/${Math.trunc(year / 100)}`)
+  const path = pp(`${directory}/${year}.toml`)
+  let yearData = {}
+  try {
+    const contents = await fs.promises.readFile(path)
+    console.log(`Updating existing file ${path}`)
+    yearData = TOML.parse(contents)
+  } catch (err) {
+    console.log(`Creating new file ${path}`)
+  }
 
   const thenDate = new Date()
   for (let dayOfYear = 1; dayOfYear <= 366; ++dayOfYear) {
@@ -190,11 +199,15 @@ async function fromYear (year, lang) {
     if (found) {
       const dayData = { lang, text, citation }
       const isoDate = thenDate.toLocaleDateString('fr-CA', { timeZone: 'UTC' }).toString()
-      yearData[isoDate] = [dayData]
+      if (!yearData[isoDate]) {
+        yearData[isoDate] = []
+      }
+      yearData[isoDate].push(dayData)
+      yearData[isoDate].sort()
+      yearData[isoDate] = yearData[isoDate].filter((e, i, a) => JSON.stringify(e) !== JSON.stringify(a[i - 1]))
     }
   }
-  const directory = pp(`data/${Math.trunc(year / 100)}`)
-  const path = pp(`${directory}/${year}.toml`)
+
   await fs.promises.mkdir(directory, { recursive: true })
   await fs.promises.writeFile(path, TOML.stringify(yearData))
 }

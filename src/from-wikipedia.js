@@ -1,8 +1,8 @@
 import { parse } from 'node-html-parser'
-import { pp } from 'passprint'
+// import { pp } from 'passprint'
 import fs from 'fs'
-
 import TOML from '@iarna/toml'
+import { isoDate, tomlDirectory, tomlFile } from './date-keys.js'
 
 const cache = {}
 // let hitCount = 0
@@ -11,7 +11,7 @@ const cache = {}
 // const hitRate = () => `${100 * hitCount / (hitCount + missCount)}%`
 
 // Returns {status, text}
-async function memoizeFetch(url) {
+async function memoizeFetch (url) {
   let result = cache[url]
   if (result) {
     // ++hitCount
@@ -28,7 +28,7 @@ async function memoizeFetch(url) {
   return result
 }
 
-function filter(text) {
+function filter (text) {
   const lines = text.split('\n')
   const out = []
   let on = true
@@ -46,10 +46,10 @@ function filter(text) {
   return out.join('\n')
 }
 
-function pruneDom($monthRoot) {
+function pruneDom ($monthRoot) {
 }
 
-function taillerDom($monthRoot) {
+function taillerDom ($monthRoot) {
   const $span = $monthRoot.getElementById('Naissances')
   if (!$span) {
     return
@@ -58,7 +58,7 @@ function taillerDom($monthRoot) {
   $ul.parentNode.removeChild($ul)
 }
 
-function annotateDeaths($yearRoot) {
+function annotateDeaths ($yearRoot) {
   const $span = $yearRoot.getElementById('Deaths')
   if (!$span) {
     return
@@ -69,7 +69,7 @@ function annotateDeaths($yearRoot) {
   }
 }
 
-function findElementInMonthArticle($monthRoot, monthUrl, monthString, day, year, weekdayString) {
+function findElementInMonthArticle ($monthRoot, monthUrl, monthString, day, year, weekdayString) {
   const ids = [
     `${monthString}_${day},_${year}_(${weekdayString})`,
     `${weekdayString},_${monthString}_${day},_${year}`
@@ -91,7 +91,7 @@ function findElementInMonthArticle($monthRoot, monthUrl, monthString, day, year,
   return { found: false }
 }
 
-function trouverElementDansArticleDuMois($monthRoot, monthUrl, monthString, day, year, weekdayString) {
+function trouverElementDansArticleDuMois ($monthRoot, monthUrl, monthString, day, year, weekdayString) {
   const css = `li a[title="${day} ${monthString}"]`
   const $a = $monthRoot.querySelector(css)
   if (!$a) {
@@ -102,7 +102,7 @@ function trouverElementDansArticleDuMois($monthRoot, monthUrl, monthString, day,
   return { found: true, $theElement, citation: monthUrl }
 }
 
-export async function thisDay(thenDate, lang, locale) {
+export async function thisDay (thenDate, lang, locale) {
   const year = thenDate.getUTCFullYear()
   const monthString = thenDate.toLocaleDateString(locale, {
     month: 'long', timeZone: 'UTC'
@@ -172,12 +172,12 @@ export async function thisDay(thenDate, lang, locale) {
   return { found: false }
 }
 
-async function fromYear(year, lang) {
+async function fromYear (year, lang) {
   const region = ({ en: 'US', fr: 'FR' })[lang]
   const locale = lang + '-' + region
 
-  const directory = pp(`data/${Math.trunc(year / 100)}`)
-  const path = pp(`${directory}/${year}.toml`)
+  const directory = tomlDirectory(year)
+  const path = tomlFile(year)
   let yearData = {}
   try {
     const contents = await fs.promises.readFile(path)
@@ -198,13 +198,13 @@ async function fromYear(year, lang) {
     const { found, text, citation } = await thisDay(thenDate, lang, locale)
     if (found) {
       const dayData = { lang, text, citation }
-      const isoDate = thenDate.toLocaleDateString('fr-CA', { timeZone: 'UTC' }).toString()
-      if (!yearData[isoDate]) {
-        yearData[isoDate] = []
+      const dateKey = isoDate(thenDate)
+      if (!yearData[dateKey]) {
+        yearData[dateKey] = []
       }
-      yearData[isoDate].push(dayData)
-      yearData[isoDate].sort()
-      yearData[isoDate] = yearData[isoDate].filter((e, i, a) => JSON.stringify(e) !== JSON.stringify(a[i - 1]))
+      yearData[dateKey].push(dayData)
+      yearData[dateKey].sort()
+      yearData[dateKey] = yearData[dateKey].filter((e, i, a) => JSON.stringify(e) !== JSON.stringify(a[i - 1]))
     }
   }
 

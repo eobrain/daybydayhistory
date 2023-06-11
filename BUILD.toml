@@ -1,0 +1,16 @@
+# Runs before package is published to npm
+[prepare]
+deps=[
+    "json/18/1823.json",
+    "json/19/1923.json",
+]
+
+["json/%.json"]
+deps = ["data/%.toml"]
+exec = """
+mkdir -p $(dirname $@)
+node src/toml-to-json < $< > $@
+"""
+
+[clean]
+exec="rm -rf json"
